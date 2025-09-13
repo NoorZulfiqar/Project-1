@@ -9,6 +9,9 @@ import time
 # For web deployment, we need to handle camera access differently
 st.set_page_config(page_title="Face-Activated Recorder", layout="wide")
 
+# In your app
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+
 # Initialize session state
 if 'recording' not in st.session_state:
     st.session_state.recording = False
@@ -160,3 +163,4 @@ st.markdown("""
 - Face data is not stored on our servers
 - Recordings are temporarily processed and can be downloaded
 """)
+
