@@ -1,0 +1,15 @@
+
+streamlit==1.32.0
+opencv-contrib-python==4.9.0.80
+numpy==1.26.4
+Pillow==10.2.0
+matplotlib==3.8.0
+face-recognition
+
+#### How it works:
+#1. **Face Encoding**: The system creates a biometric template of your face using advanced facial recognition algorithms
+#2. **Face Detection**: Uses Dlib's facial recognition which is based on deep learning
+#3. **Face Matching**: Compares detected faces with your stored biometric template
+#4. **Recording**: Automatically starts when your face is detected and stops when you leave
+###
+            
