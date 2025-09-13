@@ -1,4 +1,5 @@
 # Use Python 3.11 (works with dlib + face-recognition)
+pip install --upgrade pip
 FROM python:3.11
 
 # Install system dependencies (CMake, Boost, etc.)
