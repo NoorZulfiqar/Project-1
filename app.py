@@ -7,6 +7,7 @@ import dlib
 from PIL import Image
 import matplotlib.pyplot as plt
 from utils.face_utils import train_face_recognition_model, recognize_face, detect_faces
+#from utils.face_utils import train_face_recognition_model, recognize_face, detect_faces
 from utils.video_utils import initialize_video_writer, save_frame_as_image
 
 # Initialize session state variables
@@ -159,3 +160,4 @@ with st.expander("How to use this app"):
 st.markdown("---")
 
 st.markdown("Face recognition powered by OpenCV LBPH")
+
