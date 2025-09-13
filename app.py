@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import os
 import time
+import dlib
 from PIL import Image
 import matplotlib.pyplot as plt
 from utils.face_utils import train_face_recognition_model, recognize_face, detect_faces
@@ -156,4 +157,5 @@ with st.expander("How to use this app"):
 
 # Footer
 st.markdown("---")
+
 st.markdown("Face recognition powered by OpenCV LBPH")
