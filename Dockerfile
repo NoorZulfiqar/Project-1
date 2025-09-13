@@ -1,30 +1,16 @@
-# Use Python 3.11 (works with dlib + face-recognition)
-pip install --upgrade pip
-FROM python:3.11
+# Read the doc: https://huggingface.co/docs/hub/spaces-sdks-docker
+# you will also find guides on how best to write your Dockerfile
 
-# Install system dependencies (CMake, Boost, etc.)
-RUN apt-get update && apt-get install -y \
-    cmake \
-    libboost-all-dev \
-    libgtk2.0-dev \
-    libcanberra-gtk-module \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.9
 
-# Set working directory
+RUN useradd -m -u 1000 user
+USER user
+ENV PATH="/home/user/.local/bin:$PATH"
+
 WORKDIR /app
 
-# Copy requirements first (for caching)
-COPY requirements.txt .
+COPY --chown=user ./requirements.txt requirements.txt
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-
-# Copy the rest of the project
-COPY . .
-
-# Expose port for Streamlit
-EXPOSE 7860
-
-# Run the Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0"]
+COPY --chown=user . /app
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
