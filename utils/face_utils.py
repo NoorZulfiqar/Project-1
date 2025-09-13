@@ -1,79 +1,72 @@
 import cv2
-import numpy as np
 import os
-import pickle
+import numpy as np
+import dlib
+import face_recognition_models
+
+# Load pretrained model paths
+shape_predictor_path = face_recognition_models.pose_predictor_model_location()
+face_encoder_path = face_recognition_models.face_recognition_model_location()
+
+detector = dlib.get_frontal_face_detector()
+shape_predictor = dlib.shape_predictor(shape_predictor_path)
+face_encoder = dlib.face_recognition_model_v1(face_encoder_path)
+
+def detect_faces(image):
+    """Detect faces in an image (returns list of rectangles)"""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return detector(gray, 1)
+
+def encode_faces(image, detections):
+    """Generate encodings for all detected faces"""
+    encodings = []
+    for det in detections:
+        shape = shape_predictor(image, det)
+        encoding = np.array(face_encoder.compute_face_descriptor(image, shape))
+        encodings.append((encoding, det))
+    return encodings
 
 def train_face_recognition_model(face_data_dir, user_name):
-    """Train a simple face recognition model using LBPH"""
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    recognizer = cv2.face.LBPHFaceRecognizer_create()
-    
-    faces = []
+    """Train a simple face recognizer from saved images"""
+    encodings = []
     labels = []
-    label_id = 0
     label_map = {}
-    
+
     user_dir = os.path.join(face_data_dir, user_name)
     if not os.path.exists(user_dir):
         return None, None
-    
-    # Process all images for this user
-    for image_file in os.listdir(user_dir):
-        if image_file.endswith(('.jpg', '.png', '.jpeg')):
-            image_path = os.path.join(user_dir, image_file)
-            image = cv2.imread(image_path)
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
-            # Detect faces
-            detected_faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-            
-            for (x, y, w, h) in detected_faces:
-                face_roi = gray[y:y+h, x:x+w]
-                faces.append(face_roi)
-                labels.append(label_id)
-    
-    if not faces:
-        return None, None
-    
-    # Train the recognizer
-    recognizer.train(faces, np.array(labels))
-    
-    # Save the model
-    model_dir = "models"
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, f"{user_name}_model.yml")
-    recognizer.save(model_path)
-    
-    # Save label mapping
+
+    label_id = 0
     label_map[label_id] = user_name
-    with open(os.path.join(model_dir, f"{user_name}_labels.pickle"), 'wb') as f:
-        pickle.dump(label_map, f)
-    
+
+    for img_file in os.listdir(user_dir):
+        path = os.path.join(user_dir, img_file)
+        img = cv2.imread(path)
+        detections = detect_faces(img)
+        face_encs = encode_faces(img, detections)
+        for enc, _ in face_encs:
+            encodings.append(enc)
+            labels.append(label_id)
+
+    if len(encodings) == 0:
+        return None, None
+
+    # Store known encodings
+    recognizer = {"encodings": np.array(encodings), "labels": np.array(labels)}
     return recognizer, label_map
 
-def recognize_face(recognizer, label_map, frame, confidence_threshold=70):
-    """Recognize face in the frame"""
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-    
-    for (x, y, w, h) in faces:
-        roi_gray = gray[y:y+h, x:x+w]
-        
-        # Predict using the recognizer
-        label, confidence = recognizer.predict(roi_gray)
-        
-        if confidence < confidence_threshold:
-            user_name = label_map.get(label, "Unknown")
-            return True, user_name, (x, y, w, h)
-    
-    return False, None, None
+def recognize_face(recognizer, label_map, frame, threshold=0.6):
+    """Recognize face in a frame using Euclidean distance"""
+    detections = detect_faces(frame)
+    if len(detections) == 0:
+        return False, None, None
 
-def detect_faces(frame):
-    """Detect faces in the frame without recognition"""
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-    return faces
+    encs = encode_faces(frame, detections)
+    for enc, det in encs:
+        distances = np.linalg.norm(recognizer["encodings"] - enc, axis=1)
+        idx = np.argmin(distances)
+        if distances[idx] < threshold:
+            (x, y, w, h) = (det.left(), det.top(), det.width(), det.height())
+            return True, label_map[recognizer["labels"][idx]], (x, y, w, h)
+
+    return False, None, None
